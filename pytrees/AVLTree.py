@@ -1,7 +1,7 @@
 """
 AVL Tree. 
 
-Balanced Binary Search Tree. Gurantee for balance.
+Balanced Binary Search Tree. Gurantee for balance. Was updated to support [index,data] pairs.
 
 Convention: 
 
@@ -17,12 +17,45 @@ API:
 - inOrder(self)
 - postOrder(self)
 - countNodes(self)
-- buildFromList(cls, l)
+- buildFromList(cls, list, shuffle=True)
 
-Author: Yi Zhou
-Date: May 19, 2018 
+Examples:
+import AVLTree
+avl = AVLTree.buildFromList([-1,-2,1,2,3,4,5,6])
+avl.visulize()
+avl.delete(4)
+avl.visulize()
+avl.insert(0)
+avl.visulize()
+avl.search(5)
+avl.search(5).val
+
+myTree=AVLTree.AVLTree.buildFromList( [ [-1,1],[-2],[1],[2],[3],[4],[5],[6]] )
+myTree.search([3])
+myTree.search([3]).val
+myTree.search([3]).val[0]
+
+Changes made:
+Altered AVLTree.search to accept a special case where if it is asked to sort lists with pairs of entries [0,1], len==2, then the data returned data[1] is different than the data used to create and search through the tree data[0]. Also added AVLNode.search_value and AVLNode.data to support this crossmapping. The idea is to use this data structure to be used as an index where the keys are arbitrary.
+
+Example:
+myTree=AVLTree.AVLTree.buildFromList( [ [-1,1],[-2,2],[1,6],[2,7],[3,4],[4,8],[5,9],[6,1]] )
+
+myTree.visulize()
+searchResult = myTree.search([-1])
+print('Search result for -1 was: '+str(searchResult) )
+print('.val:', searchResult.val) #returns [-1,1]
+#print(searchResult.search_value)
+print('.data:', searchResult.data) # returns 1
+print( myTree.search([-2]).data ) # returns 7
+
+Author: Yi Zhou (github.com/coolpot)
+Date: May 19, 2018
+Website: https://github.com/cool-pot/pytrees ; https://pypi.org/project/pytrees
+Original license: MIT, https://github.com/cool-pot/pytrees/blob/master/LICENSE
 Reference: https://en.wikipedia.org/wiki/AVL_tree
 Reference: https://github.com/pgrafov/python-avl-tree/blob/master/pyavltree.py
+Changes made by github/gdiaz384 are licensed under GNU APLv3.
 """
 
 from collections import deque
@@ -32,6 +65,14 @@ import random
 class AVLNode:
     def __init__(self, val):
         self.val = val
+
+        #added
+        #if list and if list length>1
+        if (isinstance(val,list) ):
+            if len(val) == 2:
+                self.search_value = val[0]
+                self.data=val[1]
+
         self.parent = None
         self.left = None
         self.right = None 
@@ -317,21 +358,38 @@ class AVLTree:
             node.height = (node.maxChildrenHeight() + 1 if (node.right or node.left) else 0)
             changed = node.height != old_height
             node = node.parent
-    
+
     def search(self, key):
         """
         Search a AVLNode satisfies AVLNode.val = key.
         if found return AVLNode, else return None.
         """
         return self._dfsSearch(self.root, key)
-    
+
     def _dfsSearch(self, currentNode, key):
         """
         Helper function to search a key in AVLTree.
         """
+        # For debugging.
+#        if currentNode != None:
+#            if ( isinstance(key, list) ) and (len(currentNode.val) == 2):
+                #the current list pair [5, 9], the value used to conduct the search (5), and the value that is currently being searched for (6)
+#                print(currentNode.val, currentNode.search_value, key[0])
+
         if currentNode is None:
             return None
-        elif currentNode.val == key:
+
+        #if key is a list and if key length==2
+        if ( isinstance(key, list) ):
+            if len(currentNode.val) == 2:
+                if currentNode.search_value == key[0]:
+                    return currentNode
+                elif currentNode.val > key:
+                    return self._dfsSearch(currentNode.left, key)
+                else:
+                    return self._dfsSearch(currentNode.right, key)
+
+        if currentNode.val == key:
             return currentNode
         elif currentNode.val > key:
             return self._dfsSearch(currentNode.left, key)
@@ -344,7 +402,7 @@ class AVLTree:
         """
         # first find
         node = self.search(key)
-        
+
         if not node is None:
             self.nodes_count -= 1
             #     There are three cases:
@@ -511,7 +569,7 @@ class AVLTree:
         Warn: Only for simple test usage.
         """
         if self.root is None:
-            print("EMPTY TREE.")
+            print("Empty tree.")
         else:
             print("-----------------Visualize Tree----------------------")
             layer = deque([self.root])
